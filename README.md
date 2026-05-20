@@ -16,13 +16,46 @@ A basic calculator MCP server with add, subtract, multiply, and divide tools bui
 pip install -r requirements.txt
 ```
 
+Or install as a package:
+
+```bash
+pip install -e .
+```
+
 ## Configuration
 
-The server requires configuration for supported data types. You can configure it in three ways (in priority order):
+The server supports multiple configuration methods with the following priority order:
 
-### 1. Config File (Recommended for Deployment)
+### 1. pyproject.toml (Recommended for Package Deployment)
 
-Create a `config.json` file in the server directory:
+Configure in your `pyproject.toml`:
+
+```toml
+[tool.calculator-mcp]
+data_types = "both"  # Options: "integer", "decimal", or "both"
+```
+
+This is the **recommended approach** as it keeps configuration with your project metadata.
+
+### 2. Command-Line Arguments
+
+```bash
+python server.py --data-types both
+```
+
+Or if installed as package:
+
+```bash
+calculator-mcp --data-types integer
+```
+
+### 3. JSON Config File (Optional)
+
+```bash
+python server.py --config path/to/config.json
+```
+
+Where `config.json` contains:
 
 ```json
 {
@@ -30,20 +63,7 @@ Create a `config.json` file in the server directory:
 }
 ```
 
-Supported values:
-- `"both"` - Supports both integers and decimals
-- `"integer"` - Only accepts integers
-- `"decimal"` - Only accepts decimals (non-integers)
-
-**Example:** Copy `config.example.json` to `config.json` and modify as needed.
-
-### 2. Command-Line Argument
-
-```bash
-python server.py --data-types both
-```
-
-### 3. Environment Variable
+### 4. Environment Variable (Legacy)
 
 ```bash
 # Windows
@@ -56,16 +76,10 @@ CALCULATOR_DATA_TYPES=both python server.py
 
 ## Running the Server
 
-Once configured, simply run:
+Once configured via `pyproject.toml`, simply run:
 
 ```bash
 python server.py
-```
-
-Or with specific config file path:
-
-```bash
-python server.py --config /path/to/config.json
 ```
 
 Or with command-line override:
@@ -76,12 +90,17 @@ python server.py --data-types integer
 
 ## Usage with MCP Client
 
-The recommended approach is to configure the server via `config.json` at deployment, then the MCP client configuration becomes simple:
+The recommended approach is to configure the server via `pyproject.toml`, then the MCP client configuration is simple:
 
-### Option 1: Using Config File (Recommended)
+### Option 1: Using pyproject.toml (Recommended)
 
-1. Create `config.json` in the server directory with your desired settings
-2. Configure MCP client to just run the server:
+1. Configure in `pyproject.toml`:
+   ```toml
+   [tool.calculator-mcp]
+   data_types = "both"
+   ```
+
+2. Configure MCP client to run the server:
 
 ```json
 {
@@ -111,7 +130,24 @@ The recommended approach is to configure the server via `config.json` at deploym
 }
 ```
 
-### Option 3: Using Environment Variable (Legacy)
+### Option 3: Using JSON Config File
+
+```json
+{
+  "mcpServers": {
+    "calculator": {
+      "command": "python",
+      "args": [
+        "C:\\MCP_Calculator\\calculator_mcp\\server.py",
+        "--config",
+        "C:\\MCP_Calculator\\calculator_mcp\\config.json"
+      ]
+    }
+  }
+}
+```
+
+### Option 4: Using Environment Variable
 
 ```json
 {
@@ -127,7 +163,7 @@ The recommended approach is to configure the server via `config.json` at deploym
 }
 ```
 
-**Best Practice:** Use Option 1 (config file) for deployment. This separates server configuration from client configuration and follows MCP SDK standards.
+**Best Practice:** Use Option 1 (pyproject.toml) for deployment. This keeps server configuration as part of the project, not the client configuration.
 
 ## Available Tools
 

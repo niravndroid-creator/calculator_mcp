@@ -11,13 +11,19 @@ from mcp.server.models import InitializationOptions
 from mcp.server import NotificationOptions, Server
 from mcp.server.stdio import stdio_server
 
+try:
+    import tomllib
+except ModuleNotFoundError:
+    import tomli as tomllib
+
 
 def load_config() -> str:
     """
     Load configuration with priority:
     1. Command-line argument (--data-types)
-    2. Config file (config.json)
-    3. Environment variable (CALCULATOR_DATA_TYPES)
+    2. pyproject.toml [tool.calculator-mcp] section
+    3. Config file (config.json)
+    4. Environment variable (CALCULATOR_DATA_TYPES)
     """
     parser = argparse.ArgumentParser(description="Calculator MCP Server")
     parser.add_argument(
@@ -28,8 +34,7 @@ def load_config() -> str:
     parser.add_argument(
         "--config",
         type=str,
-        default="config.json",
-        help="Path to configuration file (default: config.json)"
+        help="Path to JSON configuration file (optional)"
     )
     
     args = parser.parse_args()
@@ -38,28 +43,51 @@ def load_config() -> str:
     if args.data_types:
         return args.data_types
     
-    # Priority 2: Config file
-    config_path = Path(args.config)
-    if config_path.exists():
+    # Priority 2: pyproject.toml
+    pyproject_path = Path("pyproject.toml")
+    if pyproject_path.exists():
         try:
-            with open(config_path, 'r') as f:
-                config_data = json.load(f)
-                if "data_types" in config_data:
-                    data_types = config_data["data_types"]
-                    if data_types in ["integer", "decimal", "both"]:
-                        return data_types
-                    else:
-                        print(f"ERROR: Invalid data_types in config file: '{data_types}'", file=sys.stderr)
-                        print("Valid values: 'integer', 'decimal', or 'both'", file=sys.stderr)
-                        sys.exit(1)
-        except json.JSONDecodeError as e:
-            print(f"ERROR: Invalid JSON in config file: {e}", file=sys.stderr)
-            sys.exit(1)
+            with open(pyproject_path, 'rb') as f:
+                pyproject_data = tomllib.load(f)
+                if "tool" in pyproject_data and "calculator-mcp" in pyproject_data["tool"]:
+                    config = pyproject_data["tool"]["calculator-mcp"]
+                    if "data_types" in config:
+                        data_types = config["data_types"]
+                        if data_types in ["integer", "decimal", "both"]:
+                            return data_types
+                        else:
+                            print(f"ERROR: Invalid data_types in pyproject.toml: '{data_types}'", file=sys.stderr)
+                            print("Valid values: 'integer', 'decimal', or 'both'", file=sys.stderr)
+                            sys.exit(1)
         except Exception as e:
-            print(f"ERROR: Failed to read config file: {e}", file=sys.stderr)
+            print(f"WARNING: Failed to read pyproject.toml: {e}", file=sys.stderr)
+    
+    # Priority 3: Config file (if specified)
+    if args.config:
+        config_path = Path(args.config)
+        if config_path.exists():
+            try:
+                with open(config_path, 'r') as f:
+                    config_data = json.load(f)
+                    if "data_types" in config_data:
+                        data_types = config_data["data_types"]
+                        if data_types in ["integer", "decimal", "both"]:
+                            return data_types
+                        else:
+                            print(f"ERROR: Invalid data_types in config file: '{data_types}'", file=sys.stderr)
+                            print("Valid values: 'integer', 'decimal', or 'both'", file=sys.stderr)
+                            sys.exit(1)
+            except json.JSONDecodeError as e:
+                print(f"ERROR: Invalid JSON in config file: {e}", file=sys.stderr)
+                sys.exit(1)
+            except Exception as e:
+                print(f"ERROR: Failed to read config file: {e}", file=sys.stderr)
+                sys.exit(1)
+        else:
+            print(f"ERROR: Config file not found: {args.config}", file=sys.stderr)
             sys.exit(1)
     
-    # Priority 3: Environment variable
+    # Priority 4: Environment variable
     env_value = os.getenv("CALCULATOR_DATA_TYPES")
     if env_value:
         if env_value in ["integer", "decimal", "both"]:
@@ -73,8 +101,9 @@ def load_config() -> str:
     print("ERROR: No configuration found for data_types", file=sys.stderr)
     print("Please provide configuration via one of:", file=sys.stderr)
     print("  1. Command-line: --data-types <integer|decimal|both>", file=sys.stderr)
-    print("  2. Config file: config.json with 'data_types' field", file=sys.stderr)
-    print("  3. Environment variable: CALCULATOR_DATA_TYPES", file=sys.stderr)
+    print("  2. pyproject.toml: [tool.calculator-mcp] data_types = \"both\"", file=sys.stderr)
+    print("  3. Config file: --config path/to/config.json", file=sys.stderr)
+    print("  4. Environment variable: CALCULATOR_DATA_TYPES=both", file=sys.stderr)
     sys.exit(1)
 
 
