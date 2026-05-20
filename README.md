@@ -8,15 +8,7 @@ A basic calculator MCP server with add, subtract, multiply, and divide tools bui
 - **Subtract**: Subtract second number from first
 - **Multiply**: Multiply two numbers
 - **Divide**: Divide first number by second (with zero-check)
-
-## Configuration
-
-**REQUIRED:** The `CALCULATOR_DATA_TYPES` environment variable must be set before starting the server.
-
-Supported values:
-- `both` - Supports both integers and decimals
-- `integer` - Only accepts integers
-- `decimal` - Only accepts decimals (non-integers)
+- **Configurable data type support**: integer, decimal, or both
 
 ## Installation
 
@@ -24,31 +16,102 @@ Supported values:
 pip install -r requirements.txt
 ```
 
-## Running the Server
+## Configuration
 
-**Windows:**
-```bash
-set CALCULATOR_DATA_TYPES=both
-python server.py
+The server requires configuration for supported data types. You can configure it in three ways (in priority order):
+
+### 1. Config File (Recommended for Deployment)
+
+Create a `config.json` file in the server directory:
+
+```json
+{
+  "data_types": "both"
+}
 ```
 
-**Unix/Linux/Mac:**
+Supported values:
+- `"both"` - Supports both integers and decimals
+- `"integer"` - Only accepts integers
+- `"decimal"` - Only accepts decimals (non-integers)
+
+**Example:** Copy `config.example.json` to `config.json` and modify as needed.
+
+### 2. Command-Line Argument
+
 ```bash
+python server.py --data-types both
+```
+
+### 3. Environment Variable
+
+```bash
+# Windows
+set CALCULATOR_DATA_TYPES=both
+python server.py
+
+# Unix/Linux/Mac
 CALCULATOR_DATA_TYPES=both python server.py
 ```
 
-**Examples with different configurations:**
-```bash
-# Integer-only mode
-set CALCULATOR_DATA_TYPES=integer && python server.py
+## Running the Server
 
-# Decimal-only mode
-set CALCULATOR_DATA_TYPES=decimal && python server.py
+Once configured, simply run:
+
+```bash
+python server.py
+```
+
+Or with specific config file path:
+
+```bash
+python server.py --config /path/to/config.json
+```
+
+Or with command-line override:
+
+```bash
+python server.py --data-types integer
 ```
 
 ## Usage with MCP Client
 
-Add to your MCP client configuration. **Note:** The `CALCULATOR_DATA_TYPES` environment variable is required:
+The recommended approach is to configure the server via `config.json` at deployment, then the MCP client configuration becomes simple:
+
+### Option 1: Using Config File (Recommended)
+
+1. Create `config.json` in the server directory with your desired settings
+2. Configure MCP client to just run the server:
+
+```json
+{
+  "mcpServers": {
+    "calculator": {
+      "command": "python",
+      "args": ["C:\\MCP_Calculator\\calculator_mcp\\server.py"]
+    }
+  }
+}
+```
+
+### Option 2: Using Command-Line Argument
+
+```json
+{
+  "mcpServers": {
+    "calculator": {
+      "command": "python",
+      "args": [
+        "C:\\MCP_Calculator\\calculator_mcp\\server.py",
+        "--data-types",
+        "both"
+      ]
+    }
+  }
+}
+```
+
+### Option 3: Using Environment Variable (Legacy)
 
 ```json
 {
@@ -64,7 +127,7 @@ Add to your MCP client configuration. **Note:** The `CALCULATOR_DATA_TYPES` envi
 }
 ```
 
-The server will fail to start if `CALCULATOR_DATA_TYPES` is not set or has an invalid value.
+**Best Practice:** Use Option 1 (config file) for deployment. This separates server configuration from client configuration and follows MCP SDK standards.
 
 ## Available Tools
 

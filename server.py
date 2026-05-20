@@ -1,26 +1,85 @@
 #!/usr/bin/env python3
 
+import argparse
 import asyncio
+import json
 import os
 import sys
+from pathlib import Path
 
 from mcp.server.models import InitializationOptions
 from mcp.server import NotificationOptions, Server
 from mcp.server.stdio import stdio_server
 
-# Configuration - REQUIRED environment variable
-SUPPORTED_TYPES = os.getenv("CALCULATOR_DATA_TYPES")
 
-# Validate configuration at startup
-if SUPPORTED_TYPES is None:
-    print("ERROR: CALCULATOR_DATA_TYPES environment variable is required", file=sys.stderr)
-    print("Valid values: 'integer', 'decimal', or 'both'", file=sys.stderr)
+def load_config() -> str:
+    """
+    Load configuration with priority:
+    1. Command-line argument (--data-types)
+    2. Config file (config.json)
+    3. Environment variable (CALCULATOR_DATA_TYPES)
+    """
+    parser = argparse.ArgumentParser(description="Calculator MCP Server")
+    parser.add_argument(
+        "--data-types",
+        choices=["integer", "decimal", "both"],
+        help="Supported data types: integer, decimal, or both"
+    )
+    parser.add_argument(
+        "--config",
+        type=str,
+        default="config.json",
+        help="Path to configuration file (default: config.json)"
+    )
+    
+    args = parser.parse_args()
+    
+    # Priority 1: Command-line argument
+    if args.data_types:
+        return args.data_types
+    
+    # Priority 2: Config file
+    config_path = Path(args.config)
+    if config_path.exists():
+        try:
+            with open(config_path, 'r') as f:
+                config_data = json.load(f)
+                if "data_types" in config_data:
+                    data_types = config_data["data_types"]
+                    if data_types in ["integer", "decimal", "both"]:
+                        return data_types
+                    else:
+                        print(f"ERROR: Invalid data_types in config file: '{data_types}'", file=sys.stderr)
+                        print("Valid values: 'integer', 'decimal', or 'both'", file=sys.stderr)
+                        sys.exit(1)
+        except json.JSONDecodeError as e:
+            print(f"ERROR: Invalid JSON in config file: {e}", file=sys.stderr)
+            sys.exit(1)
+        except Exception as e:
+            print(f"ERROR: Failed to read config file: {e}", file=sys.stderr)
+            sys.exit(1)
+    
+    # Priority 3: Environment variable
+    env_value = os.getenv("CALCULATOR_DATA_TYPES")
+    if env_value:
+        if env_value in ["integer", "decimal", "both"]:
+            return env_value
+        else:
+            print(f"ERROR: Invalid CALCULATOR_DATA_TYPES value: '{env_value}'", file=sys.stderr)
+            print("Valid values: 'integer', 'decimal', or 'both'", file=sys.stderr)
+            sys.exit(1)
+    
+    # No configuration found
+    print("ERROR: No configuration found for data_types", file=sys.stderr)
+    print("Please provide configuration via one of:", file=sys.stderr)
+    print("  1. Command-line: --data-types <integer|decimal|both>", file=sys.stderr)
+    print("  2. Config file: config.json with 'data_types' field", file=sys.stderr)
+    print("  3. Environment variable: CALCULATOR_DATA_TYPES", file=sys.stderr)
     sys.exit(1)
 
-if SUPPORTED_TYPES not in ["integer", "decimal", "both"]:
-    print(f"ERROR: Invalid CALCULATOR_DATA_TYPES value: '{SUPPORTED_TYPES}'", file=sys.stderr)
-    print("Valid values: 'integer', 'decimal', or 'both'", file=sys.stderr)
-    sys.exit(1)
+
+# Load configuration at startup
+SUPPORTED_TYPES = load_config()
 
 def validate_number(value: float) -> float:
     """Validate number based on configured data type support."""
@@ -35,39 +94,93 @@ def validate_number(value: float) -> float:
 # Create server instance
 app = Server("calculator-mcp")
 
-@app.tool()
-async def add(a: float, b: float) -> str:
-    """Add two numbers."""
-    validate_number(a)
-    validate_number(b)
-    result = a + b
-    return f"Result: {result}"
+@app.list_tools()
+async def handle_list_tools():
+    """List available calculator tools."""
+    from mcp.types import Tool
+    
+    data_type_info = (
+        "integers and decimals" if SUPPORTED_TYPES == "both"
+        else "integers only" if SUPPORTED_TYPES == "integer"
+        else "decimals only"
+    )
+    
+    return [
+        Tool(
+            name="add",
+            description=f"Add two numbers (supports {data_type_info})",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "a": {"type": "number", "description": "First number"},
+                    "b": {"type": "number", "description": "Second number"}
+                },
+                "required": ["a", "b"]
+            }
+        ),
+        Tool(
+            name="subtract",
+            description=f"Subtract second number from first (supports {data_type_info})",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "a": {"type": "number", "description": "First number"},
+                    "b": {"type": "number", "description": "Second number"}
+                },
+                "required": ["a", "b"]
+            }
+        ),
+        Tool(
+            name="multiply",
+            description=f"Multiply two numbers (supports {data_type_info})",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "a": {"type": "number", "description": "First number"},
+                    "b": {"type": "number", "description": "Second number"}
+                },
+                "required": ["a", "b"]
+            }
+        ),
+        Tool(
+            name="divide",
+            description=f"Divide first number by second (supports {data_type_info})",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "a": {"type": "number", "description": "Numerator"},
+                    "b": {"type": "number", "description": "Denominator (cannot be zero)"}
+                },
+                "required": ["a", "b"]
+            }
+        )
+    ]
 
-@app.tool()
-async def subtract(a: float, b: float) -> str:
-    """Subtract second number from first."""
-    validate_number(a)
-    validate_number(b)
-    result = a - b
-    return f"Result: {result}"
-
-@app.tool()
-async def multiply(a: float, b: float) -> str:
-    """Multiply two numbers."""
-    validate_number(a)
-    validate_number(b)
-    result = a * b
-    return f"Result: {result}"
-
-@app.tool()
-async def divide(a: float, b: float) -> str:
-    """Divide first number by second."""
-    validate_number(a)
-    validate_number(b)
-    if b == 0:
-        raise ValueError("Division by zero is not allowed")
-    result = a / b
-    return f"Result: {result}"
+@app.call_tool()
+async def handle_call_tool(name: str, arguments: dict):
+    """Handle calculator tool calls."""
+    from mcp.types import TextContent
+    
+    try:
+        a = validate_number(arguments["a"])
+        b = validate_number(arguments["b"])
+        
+        if name == "add":
+            result = a + b
+        elif name == "subtract":
+            result = a - b
+        elif name == "multiply":
+            result = a * b
+        elif name == "divide":
+            if b == 0:
+                raise ValueError("Division by zero is not allowed")
+            result = a / b
+        else:
+            raise ValueError(f"Unknown tool: {name}")
+        
+        return [TextContent(type="text", text=f"Result: {result}")]
+    except Exception as error:
+        return [TextContent(type="text", text=f"Error: {str(error)}")]
 
 async def main():
     """Run the calculator MCP server."""
