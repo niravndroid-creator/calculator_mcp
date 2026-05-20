@@ -11,11 +11,12 @@ A basic calculator MCP server with add, subtract, multiply, and divide tools bui
 
 ## Configuration
 
-Control supported data types via the `CALCULATOR_DATA_TYPES` environment variable:
+**REQUIRED:** The `CALCULATOR_DATA_TYPES` environment variable must be set before starting the server.
 
-- `both` (default): Supports both integers and decimals
-- `integer`: Only accepts integers
-- `decimal`: Only accepts decimals (non-integers)
+Supported values:
+- `both` - Supports both integers and decimals
+- `integer` - Only accepts integers
+- `decimal` - Only accepts decimals (non-integers)
 
 ## Installation
 
@@ -25,25 +26,29 @@ pip install -r requirements.txt
 
 ## Running the Server
 
+**Windows:**
 ```bash
+set CALCULATOR_DATA_TYPES=both
 python server.py
 ```
 
-Or with custom data type configuration:
-
+**Unix/Linux/Mac:**
 ```bash
-set CALCULATOR_DATA_TYPES=integer
-python server.py
+CALCULATOR_DATA_TYPES=both python server.py
 ```
 
-On Unix/Linux/Mac:
+**Examples with different configurations:**
 ```bash
-CALCULATOR_DATA_TYPES=integer python server.py
+# Integer-only mode
+set CALCULATOR_DATA_TYPES=integer && python server.py
+
+# Decimal-only mode
+set CALCULATOR_DATA_TYPES=decimal && python server.py
 ```
 
 ## Usage with MCP Client
 
-Add to your MCP client configuration:
+Add to your MCP client configuration. **Note:** The `CALCULATOR_DATA_TYPES` environment variable is required:
 
 ```json
 {
@@ -58,6 +63,8 @@ Add to your MCP client configuration:
   }
 }
 ```
+
+The server will fail to start if `CALCULATOR_DATA_TYPES` is not set or has an invalid value.
 
 ## Available Tools
 

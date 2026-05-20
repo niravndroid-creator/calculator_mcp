@@ -8,8 +8,19 @@ from mcp.server.models import InitializationOptions
 from mcp.server import NotificationOptions, Server
 from mcp.server.stdio import stdio_server
 
-# Configuration - can be set via environment variable
-SUPPORTED_TYPES = os.getenv("CALCULATOR_DATA_TYPES", "both")  # "integer", "decimal", or "both"
+# Configuration - REQUIRED environment variable
+SUPPORTED_TYPES = os.getenv("CALCULATOR_DATA_TYPES")
+
+# Validate configuration at startup
+if SUPPORTED_TYPES is None:
+    print("ERROR: CALCULATOR_DATA_TYPES environment variable is required", file=sys.stderr)
+    print("Valid values: 'integer', 'decimal', or 'both'", file=sys.stderr)
+    sys.exit(1)
+
+if SUPPORTED_TYPES not in ["integer", "decimal", "both"]:
+    print(f"ERROR: Invalid CALCULATOR_DATA_TYPES value: '{SUPPORTED_TYPES}'", file=sys.stderr)
+    print("Valid values: 'integer', 'decimal', or 'both'", file=sys.stderr)
+    sys.exit(1)
 
 def validate_number(value: float) -> float:
     """Validate number based on configured data type support."""
