@@ -26,16 +26,22 @@ pip install -e .
 
 The server supports multiple configuration methods with the following priority order:
 
-### 1. pyproject.toml (Recommended for Package Deployment)
+### 1. pyproject.toml (Recommended - MCP Convention)
 
-Configure in your `pyproject.toml`:
+Configure in your `pyproject.toml` using MCP standard format:
 
 ```toml
-[tool.calculator-mcp]
-data_types = "both"  # Options: "integer", "decimal", or "both"
+[tool.mcp.config]
+type = "object"
+
+[tool.mcp.config.properties.data_types]
+type = "string"
+enum = ["integer", "decimal", "both"]
+default = "both"
+description = "Supported data types for calculations"
 ```
 
-This is the **recommended approach** as it keeps configuration with your project metadata.
+This follows the **MCP configuration convention** and allows MCP clients to discover and validate configuration options automatically.
 
 ### 2. Command-Line Arguments
 
@@ -94,10 +100,16 @@ The recommended approach is to configure the server via `pyproject.toml`, then t
 
 ### Option 1: Using pyproject.toml (Recommended)
 
-1. Configure in `pyproject.toml`:
+1. Configure in `pyproject.toml` using MCP convention:
    ```toml
-   [tool.calculator-mcp]
-   data_types = "both"
+   [tool.mcp.config]
+   type = "object"
+   
+   [tool.mcp.config.properties.data_types]
+   type = "string"
+   enum = ["integer", "decimal", "both"]
+   default = "both"
+   description = "Supported data types for calculations"
    ```
 
 2. Configure MCP client to run the server:

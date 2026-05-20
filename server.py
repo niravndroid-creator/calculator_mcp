@@ -43,22 +43,27 @@ def load_config() -> str:
     if args.data_types:
         return args.data_types
     
-    # Priority 2: pyproject.toml
+    # Priority 2: pyproject.toml [tool.mcp.config]
     pyproject_path = Path("pyproject.toml")
     if pyproject_path.exists():
         try:
             with open(pyproject_path, 'rb') as f:
                 pyproject_data = tomllib.load(f)
-                if "tool" in pyproject_data and "calculator-mcp" in pyproject_data["tool"]:
-                    config = pyproject_data["tool"]["calculator-mcp"]
-                    if "data_types" in config:
-                        data_types = config["data_types"]
-                        if data_types in ["integer", "decimal", "both"]:
-                            return data_types
-                        else:
-                            print(f"ERROR: Invalid data_types in pyproject.toml: '{data_types}'", file=sys.stderr)
-                            print("Valid values: 'integer', 'decimal', or 'both'", file=sys.stderr)
-                            sys.exit(1)
+                
+                # Check for MCP convention: [tool.mcp.config]
+                if "tool" in pyproject_data and "mcp" in pyproject_data["tool"]:
+                    mcp_config = pyproject_data["tool"]["mcp"]
+                    if "config" in mcp_config and "properties" in mcp_config["config"]:
+                        properties = mcp_config["config"]["properties"]
+                        if "data_types" in properties:
+                            # Use the default value from the schema
+                            data_types = properties["data_types"].get("default", "both")
+                            if data_types in ["integer", "decimal", "both"]:
+                                return data_types
+                            else:
+                                print(f"ERROR: Invalid data_types in pyproject.toml: '{data_types}'", file=sys.stderr)
+                                print("Valid values: 'integer', 'decimal', or 'both'", file=sys.stderr)
+                                sys.exit(1)
         except Exception as e:
             print(f"WARNING: Failed to read pyproject.toml: {e}", file=sys.stderr)
     
@@ -101,7 +106,7 @@ def load_config() -> str:
     print("ERROR: No configuration found for data_types", file=sys.stderr)
     print("Please provide configuration via one of:", file=sys.stderr)
     print("  1. Command-line: --data-types <integer|decimal|both>", file=sys.stderr)
-    print("  2. pyproject.toml: [tool.calculator-mcp] data_types = \"both\"", file=sys.stderr)
+    print("  2. pyproject.toml: [tool.mcp.config.properties.data_types] default = \"both\"", file=sys.stderr)
     print("  3. Config file: --config path/to/config.json", file=sys.stderr)
     print("  4. Environment variable: CALCULATOR_DATA_TYPES=both", file=sys.stderr)
     sys.exit(1)

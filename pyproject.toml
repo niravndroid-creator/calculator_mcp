@@ -42,13 +42,15 @@ Homepage = "https://github.com/niravndroid-creator/calculator_mcp"
 Repository = "https://github.com/niravndroid-creator/calculator_mcp"
 Issues = "https://github.com/niravndroid-creator/calculator_mcp/issues"
 
-# Calculator MCP Server Configuration
-[tool.calculator-mcp]
-# Supported data types: "integer", "decimal", or "both"
-data_types = "both"
+# MCP Server Configuration (following MCP convention)
+[tool.mcp.config]
+type = "object"
 
-# Optional: Set custom config file path
-# config_file = "custom_config.json"
+[tool.mcp.config.properties.data_types]
+type = "string"
+enum = ["integer", "decimal", "both"]
+default = "both"
+description = "Supported data types for calculations"
 
 [tool.black]
 line-length = 100
