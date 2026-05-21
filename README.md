@@ -177,6 +177,115 @@ The recommended approach is to configure the server via `pyproject.toml`, then t
 
 **Best Practice:** Use Option 1 (pyproject.toml) for deployment. This keeps server configuration as part of the project, not the client configuration.
 
+## Testing the Hosted MCP Server
+
+If the server is deployed as an Azure Function App (or any HTTP host), you can test it without running the server locally.
+
+### Hosted URL
+
+```
+https://testflexfunction-dre2eghthjc4ejd8.swedencentral-01.azurewebsites.net/
+```
+
+### Option A: Python Test Script (Recommended)
+
+Run the included `test_hosted.py` script. It automatically tries the **Streamable HTTP** transport first, then falls back to **SSE**:
+
+```bash
+# Install dependencies first
+pip install -r requirements.txt
+
+# Test the default hosted URL
+python test_hosted.py
+
+# Test a custom URL with Streamable HTTP
+python test_hosted.py --url https://your-function-app.azurewebsites.net/
+
+# Test with SSE transport explicitly
+python test_hosted.py --transport sse --url https://your-function-app.azurewebsites.net/sse
+```
+
+Expected output:
+
+```
+🔗 Connecting via Streamable HTTP to: https://testflexfunction-dre2eghthjc4ejd8.swedencentral-01.azurewebsites.net/
+
+✅ Connected! Available tools: ['add', 'subtract', 'multiply', 'divide']
+
+Running calculator tests:
+  ✅ PASS  add({'a': 5, 'b': 3}) → 'Result: 8'
+  ✅ PASS  subtract({'a': 10, 'b': 4}) → 'Result: 6'
+  ✅ PASS  multiply({'a': 6, 'b': 7}) → 'Result: 42'
+  ✅ PASS  divide({'a': 15, 'b': 3}) → 'Result: 5.0'
+  ✅ PASS  add({'a': 1.5, 'b': 2.5}) → 'Result: 4.0'
+  ✅ PASS  divide({a:5, b:0}) → 'Error: ...'
+
+🎉 All tests passed!
+```
+
+### Option B: Configure an MCP Client (Claude Desktop / VS Code)
+
+Point any MCP-compatible client directly at the hosted URL.
+
+**Claude Desktop** (`claude_desktop_config.json`):
+
+```json
+{
+  "mcpServers": {
+    "calculator": {
+      "url": "https://testflexfunction-dre2eghthjc4ejd8.swedencentral-01.azurewebsites.net/"
+    }
+  }
+}
+```
+
+**VS Code** (`.vscode/mcp.json`):
+
+```json
+{
+  "servers": {
+    "calculator": {
+      "url": "https://testflexfunction-dre2eghthjc4ejd8.swedencentral-01.azurewebsites.net/"
+    }
+  }
+}
+```
+
+If your Function App uses the SSE transport, append `/sse` to the URL.
+
+### Option C: Quick Smoke Test with curl
+
+Check the server is reachable and returns a valid response:
+
+```bash
+# Streamable HTTP – send an initialize request
+curl -s -X POST \
+  https://testflexfunction-dre2eghthjc4ejd8.swedencentral-01.azurewebsites.net/ \
+  -H "Content-Type: application/json" \
+  -H "Accept: application/json, text/event-stream" \
+  -d '{
+    "jsonrpc": "2.0",
+    "id": 1,
+    "method": "initialize",
+    "params": {
+      "protocolVersion": "2024-11-05",
+      "capabilities": {},
+      "clientInfo": {"name": "curl-test", "version": "1.0"}
+    }
+  }'
+
+# SSE – open the event stream (Ctrl+C to stop)
+curl -N \
+  https://testflexfunction-dre2eghthjc4ejd8.swedencentral-01.azurewebsites.net/sse
+```
+
+### Transport Notes
+
+| Transport | Endpoint | When to use |
+|-----------|----------|-------------|
+| Streamable HTTP | `/` (or configurable path) | Modern MCP SDK ≥ 1.0; single POST endpoint |
+| SSE | `/sse` + `/messages` | Legacy clients; persistent streaming connection |
+
 ## Available Tools
 
 - `add(a, b)` - Returns a + b
